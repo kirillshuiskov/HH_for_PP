@@ -50,22 +50,6 @@ user_settings = {
     "hh_user_email": _app_settings.hh_user_email or None,
 }
 
-# Состояние парсера
-parser_state = {
-    "is_running": False,
-    "status": "idle",
-    "progress": 0,
-    "current_keyword": "",
-    "current_page": 0,
-    "total_pages": 0,
-    "vacancies_collected": 0,
-    "keywords": [],
-    "error_message": None,
-    "started_at": None,
-    "completed_at": None,
-    "stop_requested": False  # Флаг для остановки
-}
-
 # =============================================================================
 # Endpoints
 # =============================================================================
@@ -521,236 +505,15 @@ def get_distribution():
     finally:
         storage.close()
 
-@app.get("/api/parser/status")
-def parser_status():
-    return {"state": parser_state}
-
-@app.get("/api/parser/stop")
-def stop_parser():
-    """Остановка парсера."""
-    global parser_state
-    if parser_state["is_running"]:
-        parser_state["stop_requested"] = True
-        parser_state["status"] = "stopping"
-        logger.info("Запрошена остановка парсера")
-        return {"message": "Остановка запрошена", "state": parser_state}
-    else:
-        raise HTTPException(400, "Парсер не запущен")
-
-@app.get("/api/parser/cache/stats")
-def cache_stats():
-    """Статистика кэша API."""
-    from optimized_parser import APICache
-
-    try:
-        cache = APICache()
-        stats = cache.get_stats()
-        return {
-            "success": True,
-            "stats": stats
-        }
-    except Exception as e:
-        return {
-            "success": False,
-            "error": str(e)
-        }
-
-@app.post("/api/parser/cache/clear")
-def clear_cache(days: int = Query(default=7, description="Очистить кэш старше N дней")):
-    """Очистка кэша API."""
-    from optimized_parser import APICache
-
-    try:
-        cache = APICache()
-        cache.clear_old(days)
-        return {
-            "success": True,
-            "message": f"Кэш очищен (старше {days} дней)"
-        }
-    except Exception as e:
-        return {
-            "success": False,
-            "error": str(e)
-        }
-
-@app.post("/api/parser/start")
-def start_parser(
-    background_tasks: BackgroundTasks,
-    keywords: Optional[list[str]] = Query(None),
-    max_pages: Optional[int] = Query(None),
-    days_back: Optional[int] = Query(None),
-    incremental: bool = Query(False),
-    use_cache: bool = Query(True)
-):
-    """Запуск парсера (поддерживает обычный и оптимизированный режим)."""
-    from src.storage import VacancyStorage
-    global parser_state
-
-    # Проверка: email пользователя настроен?
-    user_email = user_settings.get("hh_user_email")
-    if not user_email:
-        raise HTTPException(
-            403,
-            "Для запуска парсера необходимо настроить email. "
-            "Укажите ваш email от HH.ru в настройках (иконка ⚙️ в навигации)."
-        )
-
-    if parser_state["is_running"]:
-        raise HTTPException(400, "Парсер уже запущен")
-
-    # Используем пользовательские ключевые слова или берём из конфига
-    if keywords:
-        from src.config import config_loader
-        if not keywords or keywords == [""]:
-            keywords = config_loader.search_queries
-    else:
-        from src.config import config_loader
-        keywords = config_loader.search_queries
-
-    # Создаём запись о запуске парсера в БД
-    storage = VacancyStorage()
-    parser_run_id = storage.create_parser_run(
-        keywords=keywords,
-        max_pages=max_pages or 10,
-        days_back=days_back or 30,
-        is_incremental=incremental,
-        use_cache=use_cache
-    )
-    storage.close()
-
-    parser_state = {
-        "is_running": True,
-        "status": "running",
-        "progress": 0,
-        "current_keyword": keywords[0] if keywords else "",
-        "current_page": 0,
-        "total_pages": max_pages or 10,
-        "vacancies_collected": 0,
-        "keywords": keywords,
-        "incremental": incremental,
-        "use_cache": use_cache,
-        "parser_run_id": parser_run_id,  # ID записи в БД
-        "error_message": None,
-        "started_at": datetime.now().isoformat(),
-        "completed_at": None
-    }
-
-    def run():
-        global parser_state
-        try:
-            # Создаём API-клиент с email из user_settings (не из settings модуля)
-            from src.api_client import HHAPIClient
-            api_client = HHAPIClient(email=user_email)
-
-            # Используем оптимизированный парсер если включены соответствующие режимы
-            if incremental or use_cache:
-                from optimized_parser import OptimizedVacancyCollector
-                collector = OptimizedVacancyCollector(
-                    client=api_client,
-                    max_pages=max_pages,
-                    days_back=days_back,
-                    use_cache=use_cache,
-                    incremental=incremental
-                )
-            else:
-                from src.collector import VacancyCollector
-                collector = VacancyCollector(client=api_client, max_pages=max_pages, days_back=days_back)
-
-            # Передаём флаг остановки в collector
-            collector.stop_requested = False
-
-            # Переопределяем метод сбора для обновления прогресса
-            if hasattr(collector, '_collect_by_keyword'):
-                original_collect_by_keyword = collector._collect_by_keyword
-
-                # Проверяем сколько аргументов принимает метод
-                import inspect
-                sig = inspect.signature(original_collect_by_keyword)
-                accepts_progress = 'progress_bar' in sig.parameters
-
-                def collect_by_keyword_with_progress(keyword, delay_between_pages=1.0, progress_bar=None):
-                    parser_state["current_keyword"] = keyword
-                    logger.info(f"Запрос: {keyword}")
-                    if accepts_progress:
-                        return original_collect_by_keyword(keyword, delay_between_pages, progress_bar)
-                    else:
-                        return original_collect_by_keyword(keyword, delay_between_pages)
-
-                collector._collect_by_keyword = collect_by_keyword_with_progress
-
-                # Переопределяем метод search_vacancies для отслеживания страниц
-                if hasattr(collector.client, 'search_vacancies'):
-                    original_search = collector.client.search_vacancies
-                    def search_with_progress(keyword, page, per_page=100):
-                        parser_state["current_page"] = page
-                        if parser_state.get("stop_requested", False):
-                            collector.stop_requested = True
-                            return None
-                        result = original_search(keyword, page, per_page)
-                        if result:
-                            items = result.get("items", [])
-                            parser_state["vacancies_collected"] = len(collector._seen_ids)
-                        return result
-                    collector.client.search_vacancies = search_with_progress
-
-            # Запускаем сбор с правильными параметрами
-            if hasattr(collector, 'collect_all'):
-                # Проверяем поддерживает ли collector параметр show_progress
-                import inspect
-                sig = inspect.signature(collector.collect_all)
-                if 'show_progress' in sig.parameters:
-                    result = collector.collect_all(keywords=keywords, save_raw=True, show_progress=False)
-                else:
-                    result = collector.collect_all(keywords=keywords, save_raw=True)
-            else:
-                raise AttributeError("Collector doesn't have collect_all method")
-
-            parser_state["progress"] = 100
-            parser_state["status"] = "completed"
-            parser_state["completed_at"] = datetime.now().isoformat()
-            parser_state["vacancies_collected"] = result.get("unique", 0)
-            collector.close()
-
-            # Завершаем запись парсинга в БД (успех)
-            try:
-                storage = VacancyStorage()
-                storage.complete_parser_run(
-                    run_id=parser_state["parser_run_id"],
-                    status="completed",
-                    vacancies_collected=result.get("unique", 0),
-                    vacancies_new=result.get("new", 0),
-                    vacancies_updated=result.get("updated", 0)
-                )
-                storage.close()
-            except Exception as db_err:
-                logger.error(f"Ошибка записи завершения парсинга в БД: {db_err}")
-
-        except Exception as e:
-            parser_state["status"] = "error"
-            parser_state["error_message"] = str(e)
-            parser_state["completed_at"] = datetime.now().isoformat()
-
-            # Завершаем запись парсинга в БД (ошибка)
-            try:
-                storage = VacancyStorage()
-                storage.complete_parser_run(
-                    run_id=parser_state["parser_run_id"],
-                    status="error",
-                    error_message=str(e)
-                )
-                storage.close()
-            except Exception as db_err:
-                logger.error(f"Ошибка записи ошибки парсинга в БД: {db_err}")
-
-        finally:
-            parser_state["is_running"] = False
-            parser_state["stop_requested"] = False
-
-    background_tasks.add_task(run)
-    return {"message": "Парсер запущен", "state": parser_state}
+# =============================================================================
+# Сбор вакансий вынесен из веб-приложения.
+# Официальный API hh.ru заблокирован — сбор выполняется веб-сборщиком
+# (src/web_collector.py). Веб-приложение теперь только для аналитики.
+# Эндпоинты /api/parser/start|stop|status|cache удалены.
+# =============================================================================
 
 # =============================================================================
-# API для последнего парсинга и настроек
+# API для истории парсинга (только чтение) и настроек
 # =============================================================================
 
 @app.get("/api/parser/last-run")
@@ -856,11 +619,16 @@ def download_report(filename: str):
     from src.config import settings
     from fastapi.responses import FileResponse
 
-    filepath = settings.reports_dir / filename
-    if not filepath.exists():
+    # Защита от path traversal: итоговый путь обязан лежать внутри reports_dir.
+    # Отсекаем абсолютные пути и последовательности "..".
+    reports_dir = settings.reports_dir.resolve()
+    filepath = (reports_dir / filename).resolve()
+    if not filepath.is_relative_to(reports_dir):
+        raise HTTPException(400, "Некорректное имя файла")
+    if not filepath.is_file():
         raise HTTPException(404, "Отчёт не найден")
 
-    return FileResponse(path=filepath, filename=filename, media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+    return FileResponse(path=filepath, filename=filepath.name, media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
 
 @app.post("/api/reports/generate")
 def generate_report(background_tasks: BackgroundTasks):
@@ -1859,4 +1627,4 @@ if __name__ == "__main__":
     print("   http://localhost:8000/docs")
     print("=" * 60)
 
-    uvicorn.run(app, host="0.0.0.0", port=8000, reload=False)
+    uvicorn.run(app, host="127.0.0.1", port=8000, reload=False)

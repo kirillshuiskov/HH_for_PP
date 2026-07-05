@@ -2,22 +2,22 @@
 """
 HH.ru Analytics — Главная точка входа (ETL Pipeline).
 
-Этот скрипт запускает полный цикл обработки данных:
-1. Extract — сбор вакансий с HH.ru API
-2. Transform — обработка и извлечение навыков
-3. Load — сохранение в SQLite
-4. Analyze — формирование отчётов
+Обрабатывает уже собранные данные:
+1. Transform — обработка и извлечение навыков
+2. Load — сохранение в SQLite
+3. Analyze — формирование отчётов
+
+Сбор вакансий вынесен в отдельный веб-сборщик (официальный API hh.ru
+заблокирован). Собирай данные так:
+    python -m src.web_collector                       # демо-прогон
+    # либо из своего скрипта: HHWebCollector(...).collect([...])
+Собранный сырой JSON ложится в data/raw/ и подхватывается обработкой ниже.
 
 Использование:
-    python main.py              # Полный пайплайн
-    python main.py --collect    # Только сбор
-    python main.py --process    # Только обработка
-    python main.py --analyze    # Только анализ
-
-Важно: Перед запуском убедитесь, что:
-    1. В .env указан HH_USER_EMAIL
-    2. Установлены все зависимости (pip install -r requirements.txt)
-    3. Вы готовы соблюдать лимиты API HH.ru (1 запрос/сек)
+    python main.py              # process -> load -> analyze
+    python main.py --process    # только обработка
+    python main.py --load       # только загрузка в БД
+    python main.py --analyze    # только анализ
 """
 
 import argparse
@@ -31,8 +31,6 @@ sys.path.insert(0, str(project_root))
 
 from src.config import settings
 from src.utils import get_logger, ensure_dir
-from src.api_client import HHAPIClient
-from src.collector import VacancyCollector
 from src.processor import VacancyProcessor
 from src.storage import VacancyStorage
 from src.analyzer import VacancyAnalyzer
@@ -42,66 +40,15 @@ from src.advanced_analyzer import AdvancedAnalytics
 logger = get_logger(__name__)
 
 
-def run_collection(
-    keywords: list[str] | None = None,
-    max_pages: int | None = None,
-    days_back: int | None = None
-) -> dict:
-    """
-    Этап 1: Сбор вакансий с HH.ru (Extract).
-
-    Args:
-        keywords: Список поисковых запросов (или из конфига)
-        max_pages: Максимум страниц (или из конфига)
-        days_back: За сколько дней собирать (или из конфига)
-
-    Returns:
-        Словарь со статистикой сбора
-    """
-    logger.info("=" * 60)
-    logger.info("ЭТАП 1: Сбор вакансий (Extract)")
-    logger.info("=" * 60)
-
-    # Создаём сборщик с параметрами
-    collector = VacancyCollector(
-        max_pages=max_pages,
-        days_back=days_back
-    )
-
-    try:
-        # Запускаем сбор
-        result = collector.collect_all(
-            keywords=keywords,
-            save_raw=True
-        )
-
-        # Выводим статистику
-        logger.info(f"✅ Сбор завершён")
-        logger.info(f"   Всего собрано: {result['total']}")
-        logger.info(f"   Уникальных: {result['unique']}")
-        logger.info(f"   Файлов сохранено: {len(result['files'])}")
-
-        return result
-
-    except KeyboardInterrupt:
-        logger.warning("Сбор прерван пользователем")
-        return {"total": 0, "unique": 0, "files": []}
-    except Exception as e:
-        logger.error(f"Ошибка при сборе: {type(e).__name__} - {e}")
-        raise
-    finally:
-        collector.close()
-
-
 def run_processing() -> dict:
     """
-    Этап 2: Обработка вакансий (Transform).
+    Этап Transform: обработка вакансий из data/raw/.
 
     Returns:
         Словарь со статистикой обработки
     """
     logger.info("=" * 60)
-    logger.info("ЭТАП 2: Обработка данных (Transform)")
+    logger.info("ЭТАП: Обработка данных (Transform)")
     logger.info("=" * 60)
 
     # Создаём процессор
@@ -114,7 +61,10 @@ def run_processing() -> dict:
     )
 
     if df.empty:
-        logger.warning("Нет данных для обработки")
+        logger.warning(
+            "Нет данных для обработки. Сначала собери вакансии: "
+            "python -m src.web_collector"
+        )
         return {"processed": 0}
 
     # Получаем статистику по навыкам
@@ -132,13 +82,13 @@ def run_processing() -> dict:
 
 def run_loading() -> dict:
     """
-    Этап 3: Загрузка в базу данных (Load).
+    Этап Load: загрузка обработанных данных в SQLite.
 
     Returns:
         Словарь со статистикой загрузки
     """
     logger.info("=" * 60)
-    logger.info("ЭТАП 3: Загрузка в БД (Load)")
+    logger.info("ЭТАП: Загрузка в БД (Load)")
     logger.info("=" * 60)
 
     # Проверяем наличие CSV файла
@@ -173,13 +123,13 @@ def run_loading() -> dict:
 
 def run_analysis() -> dict:
     """
-    Этап 4: Анализ и отчёты (Analyze).
+    Этап Analyze: анализ и отчёты.
 
     Returns:
         Словарь с путями к отчётам
     """
     logger.info("=" * 60)
-    logger.info("ЭТАП 4: Анализ и отчёты (Analyze)")
+    logger.info("ЭТАП: Анализ и отчёты (Analyze)")
     logger.info("=" * 60)
 
     # Проверяем наличие CSV файла
@@ -228,24 +178,18 @@ def run_analysis() -> dict:
     }
 
 
-def run_full_pipeline(
-    keywords: list[str] | None = None,
-    max_pages: int | None = None,
-    days_back: int | None = None
-) -> dict:
+def run_full_pipeline() -> dict:
     """
-    Запуск полного ETL пайплайна.
+    Запуск пайплайна обработки: Transform -> Load -> Analyze.
 
-    Args:
-        keywords: Поисковые запросы
-        max_pages: Максимум страниц
-        days_back: За сколько дней собирать
+    Сбор данных выполняется отдельно (src.web_collector) и должен быть
+    завершён до запуска — сырой JSON берётся из data/raw/.
 
     Returns:
         Словарь с результатами всех этапов
     """
     logger.info("\n" + "=" * 60)
-    logger.info("🚀 ЗАПУСК ПОЛНОГО ETL ПАЙПЛАЙНА")
+    logger.info("🚀 ЗАПУСК ПАЙПЛАЙНА ОБРАБОТКИ")
     logger.info("=" * 60)
     logger.info(f"Время запуска: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
 
@@ -253,20 +197,13 @@ def run_full_pipeline(
 
     results = {}
 
-    # Этап 1: Сбор
-    results["collection"] = run_collection(
-        keywords=keywords,
-        max_pages=max_pages,
-        days_back=days_back
-    )
-
-    # Этап 2: Обработка
+    # Transform
     results["processing"] = run_processing()
 
-    # Этап 3: Загрузка
+    # Load
     results["loading"] = run_loading()
 
-    # Этап 4: Анализ
+    # Analyze
     results["analysis"] = run_analysis()
 
     # Итоговая статистика
@@ -276,7 +213,6 @@ def run_full_pipeline(
     logger.info("\n" + "=" * 60)
     logger.info("📊 ИТОГОВАЯ СТАТИСТИКА")
     logger.info("=" * 60)
-    logger.info(f"Собрано вакансий: {results['collection'].get('unique', 0)}")
     logger.info(f"Обработано вакансий: {results['processing'].get('processed', 0)}")
     logger.info(f"Загружено в БД: {results['loading'].get('loaded', 0)}")
     logger.info(f"Время выполнения: {duration:.2f} сек ({duration/60:.2f} мин)")
@@ -294,25 +230,22 @@ def main() -> int:
     """
     # Парсер аргументов
     parser = argparse.ArgumentParser(
-        description="HH.ru Analytics — ETL система для анализа вакансий",
+        description="HH.ru Analytics — обработка и анализ собранных вакансий",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
-Примеры использования:
-  python main.py                      # Полный пайплайн
-  python main.py --collect            # Только сбор вакансий
-  python main.py --process            # Только обработка
-  python main.py --analyze            # Только анализ
-  python main.py --collect --analyze  # Сбор и анализ
-  python main.py --keywords "Python" "LLM"  # Сбор по конкретным запросам
+Сбор данных (отдельно, официальный API заблокирован):
+  python -m src.web_collector         # веб-сборщик
+
+Обработка и анализ:
+  python main.py                      # process -> load -> analyze
+  python main.py --process            # только обработка
+  python main.py --load               # только загрузка в БД
+  python main.py --analyze            # только анализ
+  python main.py --process --analyze  # обработка и анализ
         """
     )
 
     # Режимы работы
-    parser.add_argument(
-        "--collect",
-        action="store_true",
-        help="Только сбор вакансий (Extract)"
-    )
     parser.add_argument(
         "--process",
         action="store_true",
@@ -329,52 +262,13 @@ def main() -> int:
         help="Только анализ и отчёты (Analyze)"
     )
 
-    # Параметры сбора
-    parser.add_argument(
-        "--keywords",
-        nargs="+",
-        type=str,
-        help="Поисковые запросы (например: Python LLM Data)"
-    )
-    parser.add_argument(
-        "--max-pages",
-        type=int,
-        default=None,
-        help="Максимум страниц для сбора (по умолчанию из конфига)"
-    )
-    parser.add_argument(
-        "--days-back",
-        type=int,
-        default=None,
-        help="За сколько дней собирать (по умолчанию из конфига)"
-    )
-
-    # Настройки
-    parser.add_argument(
-        "--dry-run",
-        action="store_true",
-        help="Тестовый запуск без реальных запросов"
-    )
-
     args = parser.parse_args()
 
-    # Проверка: если ни один режим не указан — запускаем полный пайплайн
-    if not any([args.collect, args.process, args.load, args.analyze]):
-        logger.info("Режим не указан — запускаем полный пайплайн")
-        run_full_pipeline(
-            keywords=args.keywords,
-            max_pages=args.max_pages,
-            days_back=args.days_back
-        )
+    # Если ни один режим не указан — запускаем весь пайплайн обработки
+    if not any([args.process, args.load, args.analyze]):
+        logger.info("Режим не указан — запускаем полный пайплайн обработки")
+        run_full_pipeline()
     else:
-        # Запускаем указанные этапы
-        if args.collect:
-            run_collection(
-                keywords=args.keywords,
-                max_pages=args.max_pages,
-                days_back=args.days_back
-            )
-
         if args.process:
             run_processing()
 

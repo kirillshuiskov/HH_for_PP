@@ -75,9 +75,15 @@ class VacancyProcessor:
         # Загружаем словари навыков из конфига
         self.skills_dict = config_loader.get_all_skills()
 
+        # Кэш лемматизации (слово -> лемма), чтобы не гонять pymorphy повторно
+        self._lemma_cache: Dict[str, str] = {}
+
         # Создаём обратный индекс: навык -> категория
         # Это позволяет быстро определять категорию найденного навыка
         self._skill_to_category: Dict[str, str] = {}
+        # Лемматизированный индекс для навыков с кириллицей:
+        # [(лемма-фраза, исходный навык, категория)] — ловит падежи
+        self._skill_lemmas: List[Tuple[str, str, str]] = []
         self._build_skill_index()
 
         logger.info(
@@ -97,6 +103,7 @@ class VacancyProcessor:
             используется последняя (приоритет Tools > Soft > Hard)
         """
         self._skill_to_category = {}
+        self._skill_lemmas = []
 
         for category, skills in self.skills_dict.items():
             for skill in skills:
@@ -105,7 +112,19 @@ class VacancyProcessor:
                 if len(normalized) >= self.min_skill_length:
                     self._skill_to_category[normalized] = category
 
-        logger.debug(f"Построен индекс из {len(self._skill_to_category)} навыков")
+                    # Для навыков с кириллицей строим лемматизированную форму,
+                    # чтобы ловить падежи ("холодные звонки" ~ "холодных звонков").
+                    # Термины без кириллицы (c++, b2b, python) не трогаем —
+                    # их надёжно ловит точный поиск, а лемматизация их ломает.
+                    if re.search('[а-яё]', normalized):
+                        lemma_phrase = self._lemmatize_phrase(normalized)
+                        if lemma_phrase:
+                            self._skill_lemmas.append((lemma_phrase, normalized, category))
+
+        logger.debug(
+            f"Построен индекс: {len(self._skill_to_category)} навыков, "
+            f"{len(self._skill_lemmas)} лемматизированных"
+        )
 
     def _normalize_text(self, text: str) -> str:
         """
@@ -152,16 +171,52 @@ class VacancyProcessor:
         if not word:
             return ""
 
+        cached = self._lemma_cache.get(word)
+        if cached is not None:
+            return cached
+
         # pymorphy3 лучше работает с кириллицей
         # Для латиницы просто возвращаем слово
         if not re.search('[а-яА-ЯёЁ]', word):
-            return word.lower()
+            result = word.lower()
+        else:
+            try:
+                parses = self.morph.parse(word)
+                # Нам важна не лингвистическая точность, а КОНСИСТЕНТНОСТЬ:
+                # навык и текст должны давать одну лемму. Прилагательные pymorphy
+                # разбирает нестабильно ("холодные" -> сущ. "холодное", но
+                # "холодных" -> прил.). Поэтому если среди разборов есть
+                # прилагательное/причастие — берём его и приводим к муж.р. ед.ч.
+                adj = next(
+                    (p for p in parses if p.tag.POS in ("ADJF", "ADJS", "PRTF", "PRTS")),
+                    None,
+                )
+                if adj is not None:
+                    canon = adj.inflect({"masc", "sing", "nomn"})
+                    result = (canon.word if canon else adj.normal_form).lower()
+                else:
+                    result = parses[0].normal_form.lower()
+            except Exception:
+                result = word.lower()
 
-        try:
-            parsed = self.morph.parse(word)[0]
-            return parsed.normal_form.lower()
-        except Exception:
-            return word.lower()
+        self._lemma_cache[word] = result
+        return result
+
+    def _lemmatize_phrase(self, text: str) -> str:
+        """
+        Лемматизация всех слов в строке с сохранением пунктуации/пробелов.
+
+        Каждое слово заменяется на свою лемму; разделители остаются на месте.
+        Используется и для навыков-фраз, и для текста вакансии — тогда падежные
+        формы совпадают: "воронкой продаж" -> "воронка продажа".
+
+        Пример:
+            >>> processor._lemmatize_phrase("холодных звонков")
+            'холодный звонок'
+        """
+        if not text:
+            return ""
+        return re.sub(r'\w+', lambda m: self._lemmatize(m.group()), text)
 
     def _extract_skills_from_text(
         self,
@@ -197,7 +252,8 @@ class VacancyProcessor:
             "tools": set()
         }
 
-        # Проверяем каждый навык из словаря
+        # Проход 1 — точное совпадение по исходному словарю.
+        # Ловит термины с символами/латиницей (c++, c#, b2b, python).
         for skill, category in self._skill_to_category.items():
             # Используем regex для поиска целых слов
             # \b — граница слова, чтобы не находить "python" в "cpython"
@@ -206,6 +262,18 @@ class VacancyProcessor:
             if re.search(pattern, normalized_text, re.IGNORECASE):
                 found_skills.add(skill)
                 skills_by_category[category].add(skill)
+
+        # Проход 2 — лемматизированное совпадение (падежи).
+        # Текст приводим к леммам и ищем в нём лемма-формы навыков.
+        # Найденный навык репортим в исходной словарной форме.
+        lemmatized_text = self._lemmatize_phrase(normalized_text)
+        for lemma_phrase, original, category in self._skill_lemmas:
+            if original in found_skills:
+                continue  # уже найден точным проходом
+            pattern = r'\b' + re.escape(lemma_phrase) + r'\b'
+            if re.search(pattern, lemmatized_text):
+                found_skills.add(original)
+                skills_by_category[category].add(original)
 
         # Конвертируем множества в списки
         skills_by_category = {

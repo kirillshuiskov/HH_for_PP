@@ -1,0 +1,8 @@
+
+=== Сбор Sales/BDM вакансий ===
+Ключевых запросов: 10, по 50 на запрос
+schedule=remote, area=None, output=/Users/kirillshuiskov/test/hh_parser_api/data/raw_sales
+
+[32m14:16:22 | INFO     | src.web_collector | HHWebCollector инициализирован. schedule=remote, area=None, delay=1.5s[0m
+[32m14:16:22 | INFO     | src.web_collector | [1/10] Запрос: 'Business Development Manager'[0m
+[32m14:16:25 | INFO     | src.web_collector |   Найдено всего по запросу: 499[0m
