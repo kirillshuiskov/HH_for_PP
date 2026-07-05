@@ -31,3 +31,12 @@ schedule=remote, area=None, output=/Users/kirillshuiskov/test/hh_parser_api/data
 [32m15:24:22 | INFO     | src.web_collector |   Найдено всего по запросу: 4689[0m
 [31m15:26:14 | ERROR    | src.web_collector | Сетевая ошибка https://hh.ru/vacancy/134134679: ReadTimeout - HTTPSConnectionPool(host='hh.ru', port=443): Read timed out. (read timeout=30)[0m
 [33m15:26:14 | WARNING  | src.web_collector |   Не удалось загрузить карточку 134134679[0m
+[32m15:27:01 | INFO     | src.web_collector |   Собрано по 'development manager': 49[0m
+[32m15:27:06 | INFO     | src.web_collector |   Собрано по 'development manager': 50[0m
+[32m15:27:06 | INFO     | src.web_collector | Итого по 'development manager': 50 вакансий[0m
+[32m15:27:06 | INFO     | src.web_collector | [7/11] Запрос: 'менеджер по партнёрствам'[0m
+[32m15:27:09 | INFO     | src.web_collector |   Найдено всего по запросу: 508[0m
+[31m15:28:48 | ERROR    | src.web_collector | Сетевая ошибка https://hh.ru/vacancy/134660735: ConnectionError - HTTPSConnectionPool(host='hh.ru', port=443): Read timed out.[0m
+[33m15:28:48 | WARNING  | src.web_collector |   Не удалось загрузить карточку 134660735[0m
+[31m15:29:38 | ERROR    | src.web_collector | Сетевая ошибка https://hh.ru/vacancy/133983360: ReadTimeout - HTTPSConnectionPool(host='hh.ru', port=443): Read timed out. (read timeout=30)[0m
+[33m15:29:38 | WARNING  | src.web_collector |   Не удалось загрузить карточку 133983360[0m
