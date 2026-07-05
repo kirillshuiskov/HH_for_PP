@@ -40,3 +40,203 @@ schedule=remote, area=None, output=/Users/kirillshuiskov/test/hh_parser_api/data
 [33m15:28:48 | WARNING  | src.web_collector |   Не удалось загрузить карточку 134660735[0m
 [31m15:29:38 | ERROR    | src.web_collector | Сетевая ошибка https://hh.ru/vacancy/133983360: ReadTimeout - HTTPSConnectionPool(host='hh.ru', port=443): Read timed out. (read timeout=30)[0m
 [33m15:29:38 | WARNING  | src.web_collector |   Не удалось загрузить карточку 133983360[0m
+[32m15:30:48 | INFO     | src.web_collector |   Собрано по 'менеджер по партнёрствам': 42[0m
+[32m15:31:10 | INFO     | src.web_collector |   Собрано по 'менеджер по партнёрствам': 50[0m
+[32m15:31:10 | INFO     | src.web_collector | Итого по 'менеджер по партнёрствам': 50 вакансий[0m
+[32m15:31:10 | INFO     | src.web_collector | [8/11] Запрос: 'партнёрский менеджер'[0m
+[32m15:31:13 | INFO     | src.web_collector |   Найдено всего по запросу: 1295[0m
+[32m15:32:35 | INFO     | src.web_collector |   Собрано по 'партнёрский менеджер': 33[0m
+[32m15:33:21 | INFO     | src.web_collector |   Собрано по 'партнёрский менеджер': 50[0m
+[32m15:33:21 | INFO     | src.web_collector | Итого по 'партнёрский менеджер': 50 вакансий[0m
+[32m15:33:21 | INFO     | src.web_collector | [9/11] Запрос: 'channel manager'[0m
+[32m15:33:24 | INFO     | src.web_collector |   Найдено всего по запросу: 77[0m
+[32m15:35:04 | INFO     | src.web_collector |   Собрано по 'channel manager': 40[0m
+[32m15:35:32 | INFO     | src.web_collector |   Собрано по 'channel manager': 50[0m
+[32m15:35:32 | INFO     | src.web_collector | Итого по 'channel manager': 50 вакансий[0m
+[32m15:35:32 | INFO     | src.web_collector | [10/11] Запрос: 'менеджер по развитию'[0m
+[32m15:35:35 | INFO     | src.web_collector |   Найдено всего по запросу: 10372[0m
+[32m15:37:00 | INFO     | src.web_collector |   Собрано по 'менеджер по развитию': 32[0m
+[32m15:37:48 | INFO     | src.web_collector |   Собрано по 'менеджер по развитию': 50[0m
+[32m15:37:48 | INFO     | src.web_collector | Итого по 'менеджер по развитию': 50 вакансий[0m
+[32m15:37:48 | INFO     | src.web_collector | [11/11] Запрос: 'buisness development manager'[0m
+[32m15:37:51 | INFO     | src.web_collector |   Найдено всего по запросу: 2[0m
+[32m15:37:56 | INFO     | src.web_collector |   Собрано по 'buisness development manager': 2[0m
+[32m15:37:56 | INFO     | src.web_collector | Итого по 'buisness development manager': 2 вакансий[0m
+[32m15:37:56 | INFO     | src.web_collector | Всего собрано уникальных вакансий: 444[0m
+[32m15:37:56 | INFO     | src.web_collector | Сохранено: /Users/kirillshuiskov/test/hh_parser_api/data/raw_sales/all_vacancies_20260705_153756.json[0m
+
+Собрано уникальных вакансий: 444
+
+=== Обработка (Transform) ===
+[32m15:37:56 | INFO     | src.processor | VacancyProcessor инициализирован. Навыков в словаре: 1105[0m
+[32m15:37:56 | INFO     | src.processor | Найдено файлов для обработки: 2[0m
+[32m15:37:56 | INFO     | src.processor | Обработка файла: /Users/kirillshuiskov/test/hh_parser_api/data/raw_sales/all_vacancies_20260705_144257.json[0m
+[32m15:37:56 | INFO     | src.processor | Загружено 493 вакансий[0m
+[32m15:38:15 | INFO     | src.processor | Создан DataFrame: 493 строк, 24 колонок[0m
+[32m15:38:15 | INFO     | src.processor | Обработка файла: /Users/kirillshuiskov/test/hh_parser_api/data/raw_sales/all_vacancies_20260705_153756.json[0m
+[32m15:38:15 | INFO     | src.processor | Загружено 444 вакансий[0m
+[32m15:38:34 | INFO     | src.processor | Создан DataFrame: 444 строк, 24 колонок[0m
+[32m15:38:34 | INFO     | src.processor | Удалено дубликатов: 133[0m
+[32m15:38:34 | INFO     | src.processor | Сохранено CSV: /Users/kirillshuiskov/test/hh_parser_api/data/processed_sales/vacancies_processed.csv[0m
+[32m15:38:34 | INFO     | src.processor | Сохранено Parquet: /Users/kirillshuiskov/test/hh_parser_api/data/processed_sales/vacancies_processed.parquet[0m
+Обработано вакансий: 804
+
+(отброшено нерелевантных вакансий: 19)
+
+======================================================================
+📊 АНАЛИТИКА ПО SALES / BDM  (вакансий: 785)
+======================================================================
+
+— Распределение по группам ролей:
+  • Sales (общее)             337  ( 42.9%)
+  • Прочее                    251  ( 32.0%)
+  • BDM                       105  ( 13.4%)
+  • KAM                        46  (  5.9%)
+  • Enterprise/SaaS Sales      37  (  4.7%)
+  • Account Manager             9  (  1.1%)
+
+— Зарплата (RUB, на руки, указана у 230/691 RUB-вакансий):
+  медиана: 150,000  среднее: 232,705  P25: 96,775  P75: 252,378
+  по группам ролей (медиана, n):
+    Account Manager          мед=  107,500  n=4
+    BDM                      мед=  261,000  n=23
+    Enterprise/SaaS Sales    мед=  150,000  n=12
+    KAM                      мед=  285,000  n=14
+    Sales (общее)            мед=  150,000  n=105
+    Прочее                   мед=   97,850  n=72
+
+— Требуемый опыт:
+  • От 1 года до 3 лет            393  ( 50.1%)
+  • От 3 до 6 лет                 218  ( 27.8%)
+  • Нет опыта                      98  ( 12.5%)
+  • Более 6 лет                    76  (  9.7%)
+
+— Формат работы (по schedule):
+  • Удалённо                  785  (100.0%)
+
+— Топ-10 регионов:
+  • Москва                        297
+  • Санкт-Петербург                80
+  • Минск                          43
+  • Алматы                         25
+  • Краснодар                      22
+  • Тбилиси                        18
+  • Екатеринбург                   16
+  • Нижний Новгород                15
+  • Кипр                           14
+  • Казань                         14
+
+— Топ-15 работодателей:
+  • Онлайн-школа Тетрика                      37
+  • Точка Банк                                36
+  • Т-Банк                                    24
+  • Skyeng                                    13
+  • ЕЦТ                                       13
+  • МТС                                       10
+  • Genesis Group AG                           8
+  • ESTADEL                                    8
+  • Andersen                                   6
+  • DAMIRA BEVERAGES ENTERPRISE                6
+  • Zoon.ru                                    5
+  • Selsup                                     5
+  • Emphasoft                                  5
+  • HR ME                                      4
+  • Biglion                                    4
+
+— Топ-20 Hard Skills:
+  • активные продажи                  242  (30.8%)
+  • b2b продажи                       200  (25.5%)
+  • переговоры                        132  (16.8%)
+  • отчётность                        123  (15.7%)
+  • презентации                       121  (15.4%)
+  • заключение договоров              120  (15.3%)
+  • коммерческое предложение          116  (14.8%)
+  • холодные продажи                  109  (13.9%)
+  • выполнение плана                   99  (12.6%)
+  • saas                               94  (12.0%)
+  • план продаж                        94  (12.0%)
+  • business development               89  (11.3%)
+  • ведение переговоров                88  (11.2%)
+  • воронка продаж                     79  (10.1%)
+  • цикл сделки                        75  ( 9.6%)
+  • enterprise                         72  ( 9.2%)
+  • проведение переговоров             68  ( 8.7%)
+  • мониторинг                         67  ( 8.5%)
+  • выявление потребностей             66  ( 8.4%)
+  • развитие бизнеса                   62  ( 7.9%)
+
+— Топ-15 Soft Skills:
+  • развитие                          474  (60.4%)
+  • переговоры                        291  (37.1%)
+  • контроль                          183  (23.3%)
+  • сервис                            180  (22.9%)
+  • телефонные переговоры             164  (20.9%)
+  • ответственность                   155  (19.7%)
+  • взаимодействие                    143  (18.2%)
+  • презентации                       132  (16.8%)
+  • мотивация                         115  (14.6%)
+  • организация                       113  (14.4%)
+  • планирование                      110  (14.0%)
+  • обратная связь                     95  (12.1%)
+  • деловое общение                    93  (11.8%)
+  • деловая переписка                  85  (10.8%)
+  • самостоятельность                  79  (10.1%)
+
+— Топ-15 Tools:
+  • excel                              53  ( 6.8%)
+  • amocrm                             44  ( 5.6%)
+  • telegram                           37  ( 4.7%)
+  • 1с                                 36  ( 4.6%)
+  • битрикс24                          25  ( 3.2%)
+  • bitrix24                           23  ( 2.9%)
+  • zoom                               19  ( 2.4%)
+  • google sheets                      19  ( 2.4%)
+  • word                               16  ( 2.0%)
+  • access                             16  ( 2.0%)
+  • ms office                          12  ( 1.5%)
+  • whatsapp                           11  ( 1.4%)
+  • powerpoint                         11  ( 1.4%)
+  • sales navigator                     9  ( 1.1%)
+  • chatgpt                             9  ( 1.1%)
+
+----------------------------------------------------------------------
+🎯 BDM-фокус  (n=105)
+----------------------------------------------------------------------
+  зарплата (RUB на руки): медиана=261,000, среднее=322,265  (n=23)
+  опыт:
+    • От 3 до 6 лет                50
+    • От 1 года до 3 лет           43
+    • Более 6 лет                  8
+    • Нет опыта                    4
+  топ-15 hard skills:
+    • business development              44  (41.9%)
+    • b2b продажи                       42  (40.0%)
+    • переговоры                        34  (32.4%)
+    • развитие бизнеса                  28  (26.7%)
+    • коммерческое предложение          23  (21.9%)
+    • активные продажи                  21  (20.0%)
+    • ведение переговоров               19  (18.1%)
+    • проведение переговоров            19  (18.1%)
+    • saas                              18  (17.1%)
+    • презентации                       18  (17.1%)
+    • воронка продаж                    16  (15.2%)
+    • отчётность                        15  (14.3%)
+    • цикл сделки                       15  (14.3%)
+    • enterprise                        14  (13.3%)
+    • командировки                      13  (12.4%)
+  топ-10 компаний:
+    • Offer Now                                3
+    • HR ME                                    3
+    • Sputnik8                                 2
+    • WEON                                     2
+    • ФИНАМ                                    2
+    • Фортуна Айти                             2
+    • Lenkep recruitment                       2
+    • AdChampagne                              2
+    • Международная платежная система в high-risk сфере 2
+    • EnterExpert LLC                          1
+
+💾 Сводная таблица: /Users/kirillshuiskov/test/hh_parser_api/data/reports_sales/sales_bdm_summary.csv
+💾 Обработанный CSV: /Users/kirillshuiskov/test/hh_parser_api/data/processed_sales/vacancies_processed.csv
+======================================================================
+
