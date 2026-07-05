@@ -6,3 +6,13 @@ schedule=remote, area=None, output=/Users/kirillshuiskov/test/hh_parser_api/data
 [32m14:16:22 | INFO     | src.web_collector | HHWebCollector инициализирован. schedule=remote, area=None, delay=1.5s[0m
 [32m14:16:22 | INFO     | src.web_collector | [1/10] Запрос: 'Business Development Manager'[0m
 [32m14:16:25 | INFO     | src.web_collector |   Найдено всего по запросу: 499[0m
+[32m14:18:40 | INFO     | src.web_collector |   Собрано по 'Business Development Manager': 50[0m
+[32m14:18:40 | INFO     | src.web_collector | Итого по 'Business Development Manager': 50 вакансий[0m
+[32m14:18:40 | INFO     | src.web_collector | [2/10] Запрос: 'менеджер по развитию бизнеса'[0m
+[32m14:18:43 | INFO     | src.web_collector |   Найдено всего по запросу: 4968[0m
+[31m14:21:34 | ERROR    | src.web_collector | Сетевая ошибка https://hh.ru/vacancy/134704650: ConnectionError - HTTPSConnectionPool(host='hh.ru', port=443): Read timed out.[0m
+[33m14:21:34 | WARNING  | src.web_collector |   Не удалось загрузить карточку 134704650[0m
+[32m14:21:37 | INFO     | src.web_collector |   Собрано по 'менеджер по развитию бизнеса': 50[0m
+[32m14:21:37 | INFO     | src.web_collector | Итого по 'менеджер по развитию бизнеса': 50 вакансий[0m
+[32m14:21:37 | INFO     | src.web_collector | [3/10] Запрос: 'BDM'[0m
+[32m14:21:39 | INFO     | src.web_collector |   Найдено всего по запросу: 44[0m
