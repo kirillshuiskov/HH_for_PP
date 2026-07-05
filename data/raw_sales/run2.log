@@ -1,0 +1,33 @@
+
+=== Сбор Sales/BDM вакансий ===
+Ключевых запросов: 11, по 50 на запрос
+schedule=remote, area=None, output=/Users/kirillshuiskov/test/hh_parser_api/data/raw_sales
+
+[32m15:15:50 | INFO     | src.web_collector | HHWebCollector инициализирован. schedule=remote, area=None, delay=1.5s[0m
+[32m15:15:50 | INFO     | src.web_collector | [1/11] Запрос: 'Head of Business Development'[0m
+[32m15:15:53 | INFO     | src.web_collector |   Найдено всего по запросу: 76[0m
+[32m15:17:57 | INFO     | src.web_collector |   Собрано по 'Head of Business Development': 50[0m
+[32m15:17:57 | INFO     | src.web_collector | Итого по 'Head of Business Development': 50 вакансий[0m
+[32m15:17:57 | INFO     | src.web_collector | [2/11] Запрос: 'Director of Business Development'[0m
+[32m15:17:59 | INFO     | src.web_collector |   Найдено всего по запросу: 52[0m
+[32m15:19:32 | INFO     | src.web_collector |   Собрано по 'Director of Business Development': 34[0m
+[32m15:19:38 | INFO     | src.web_collector |   Собрано по 'Director of Business Development': 36[0m
+[32m15:19:38 | INFO     | src.web_collector | Итого по 'Director of Business Development': 36 вакансий[0m
+[32m15:19:38 | INFO     | src.web_collector | [3/11] Запрос: 'VP of Sales'[0m
+[32m15:19:41 | INFO     | src.web_collector |   Найдено всего по запросу: 8[0m
+[32m15:19:56 | INFO     | src.web_collector |   Собрано по 'VP of Sales': 6[0m
+[32m15:19:56 | INFO     | src.web_collector | Итого по 'VP of Sales': 6 вакансий[0m
+[32m15:19:56 | INFO     | src.web_collector | [4/11] Запрос: 'Sales Director'[0m
+[32m15:19:58 | INFO     | src.web_collector |   Найдено всего по запросу: 131[0m
+[32m15:21:29 | INFO     | src.web_collector |   Собрано по 'Sales Director': 37[0m
+[32m15:22:06 | INFO     | src.web_collector |   Собрано по 'Sales Director': 50[0m
+[32m15:22:06 | INFO     | src.web_collector | Итого по 'Sales Director': 50 вакансий[0m
+[32m15:22:06 | INFO     | src.web_collector | [5/11] Запрос: 'B2B sales manager'[0m
+[32m15:22:08 | INFO     | src.web_collector |   Найдено всего по запросу: 3485[0m
+[32m15:24:14 | INFO     | src.web_collector |   Собрано по 'B2B sales manager': 49[0m
+[32m15:24:19 | INFO     | src.web_collector |   Собрано по 'B2B sales manager': 50[0m
+[32m15:24:19 | INFO     | src.web_collector | Итого по 'B2B sales manager': 50 вакансий[0m
+[32m15:24:19 | INFO     | src.web_collector | [6/11] Запрос: 'development manager'[0m
+[32m15:24:22 | INFO     | src.web_collector |   Найдено всего по запросу: 4689[0m
+[31m15:26:14 | ERROR    | src.web_collector | Сетевая ошибка https://hh.ru/vacancy/134134679: ReadTimeout - HTTPSConnectionPool(host='hh.ru', port=443): Read timed out. (read timeout=30)[0m
+[33m15:26:14 | WARNING  | src.web_collector |   Не удалось загрузить карточку 134134679[0m

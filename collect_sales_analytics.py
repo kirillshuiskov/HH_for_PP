@@ -32,17 +32,29 @@ PROCESSED_DIR = PROJECT_ROOT / "data" / "processed_sales"
 REPORTS_DIR = PROJECT_ROOT / "data" / "reports_sales"
 
 # Sales / BDM — ключевые запросы. BDM идёт первым (приоритет).
+# Расширенный BDM-набор (дособираем поверх уже собранных 493 в data/raw_sales/).
+# Senior-роли (Head/Director/VP) исключены — не целевая роль пользователя «пока что».
+# Проверка написания на hh.ru: правильное "business" даёт 495, опечатка "bussiness" — ~1.
 KEYWORDS = [
-    "Business Development Manager",        # BDM
-    "менеджер по развитию бизнеса",         # BDM (RU)
-    "BDM",                                  # BDM
-    "sales manager",                        # sales
-    "менеджер по продажам",                 # sales (RU)
-    "Key Account Manager",                  # KAM
-    "account manager",                      # AM
-    "enterprise sales",                     # enterprise
-    "SaaS sales",                           # IT/SaaS sales
-    "торговый представитель",               # field sales
+    "B2B sales manager",
+    "development manager",
+    "менеджер по партнёрствам",
+    "партнёрский менеджер",
+    "channel manager",
+    "менеджер по развитию",
+    "buisness development manager",         # реальная опечатка на hh.ru (2 вакансии)
+]
+
+# Подстроки в названии вакансии, которые считаем нерелевантными и выкидываем
+# из аналитики целиком (даже если попали в сбор).
+# Senior-роли (head/director/VP/руководитель отдела) — не целевой уровень пользователя.
+IRRELEVANT_HINTS = [
+    "торговый представител", "мерчендайз", "мерчандайз",
+    # senior / leadership
+    "head of", "director of", "vp of sales", "vp sales", "sales director",
+    "директор по продажам", "директор по продаж", "директор по развитию",
+    "руководитель отдела продаж", "начальник отдела продаж", "head of sales",
+    "head of business", "директор по бизнес",
 ]
 
 MAX_PER_KEYWORD = 50
@@ -111,6 +123,18 @@ def run_analyze(df=None):
         df = pd.read_csv(csv_path)
 
     REPORTS_DIR.mkdir(parents=True, exist_ok=True)
+
+    # Выкидываем нерелевантные роли (напр. «торговый представитель») целиком
+    def _is_irrelevant(name: str) -> bool:
+        s = (name or "").lower()
+        return any(h in s for h in IRRELEVANT_HINTS)
+
+    mask_irr = df["vacancy_name"].fillna("").apply(_is_irrelevant)
+    dropped = int(mask_irr.sum())
+    if dropped:
+        df = df[~mask_irr].reset_index(drop=True)
+        print(f"\n(отброшено нерелевантных вакансий: {dropped})")
+
     n = len(df)
     print(f"\n{'='*70}")
     print(f"📊 АНАЛИТИКА ПО SALES / BDM  (вакансий: {n})")
